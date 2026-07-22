@@ -1,12 +1,11 @@
 # CBT OMR Tester
 
 [![Release](https://img.shields.io/github/v/release/jeongiryang/cbt-omr-tester?color=blue&label=Latest%20Release)](https://github.com/jeongiryang/cbt-omr-tester/releases/latest)
-[![Run CBT](https://img.shields.io/badge/CBT_Run-Click_Here-success)](https://github.com/jeongiryang/cbt-omr-tester/releases/latest)
+[![Run CBT](https://img.shields.io/badge/CBT_Run-Click_Here-success)](https://github.com/jeongiryang/cbt-omr-tester/releases/download/v1.0.0/CBT.html)
 
 [바로가기]
 
-- 최신 릴리스에서 CBT.html 다운로드: [https://github.com/jeongiryang/cbt-omr-tester/releases/latest](https://github.com/jeongiryang/cbt-omr-tester/releases/latest)
-- CBT.html 파일 직접 보기: [CBT.html](./CBT.html)
+- [CBT.html 바로가기](https://github.com/jeongiryang/cbt-omr-tester/releases/download/v1.0.0/CBT.html)
 
 ---
 

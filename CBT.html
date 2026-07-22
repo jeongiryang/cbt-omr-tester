@@ -247,9 +247,12 @@
             <option value="0">제한 없음</option>
             <option value="30">30분</option>
             <option value="60">60분</option>
-            <option value="90">90분</option>
+            <option value="90">90분</option>            <option value="custom">&#51649;&#51217; &#51077;&#47141;</option>
           </select>
-        </div>
+        </div>          <div id="customTimeField" class="hidden" style="margin-top:8px;">
+            <label class="sub-label" for="customTimeLimit">&#51649;&#51217; &#51077;&#47141; (&#48516;)</label>
+            <input id="customTimeLimit" type="number" min="1" max="720" step="1" inputmode="numeric" placeholder="e.g. 75">
+          </div>
         <div class="field">
           <label class="field-label" for="scoreMode">문항 배점 방식</label>
           <select id="scoreMode">
@@ -354,7 +357,7 @@
         pointPerQuestion: 2,
         passScore: 60,
         subjectCutoff: 40,
-        timeLimit: 0
+        timeLimit: 90
       },
       engineer: {
         subjects: [
@@ -369,7 +372,7 @@
         pointPerQuestion: 1,
         passScore: 60,
         subjectCutoff: 40,
-        timeLimit: 0
+        timeLimit: 150
       }
     };
 
@@ -427,9 +430,13 @@
       $('#pointPerQuestion').value = copy.pointPerQuestion;
       $('#passScore').value = copy.passScore;
       $('#subjectCutoff').value = copy.subjectCutoff;
-      $('#timeLimit').value = copy.timeLimit;
+            const supportedTimeLimits = ['0', '30', '60', '90'];
+      const configuredTimeLimit = String(copy.timeLimit);
+      $('#timeLimit').value = supportedTimeLimits.includes(configuredTimeLimit) ? configuredTimeLimit : 'custom';
+      $('#customTimeLimit').value = configuredTimeLimit === '0' ? '' : configuredTimeLimit;
       renderSubjectSettings(copy.subjects);
       toggleScoreMode();
+      toggleTimeLimit();
       $('#setupError').classList.add('hidden');
     }
 
@@ -437,6 +444,12 @@
       const isAuto = $('#scoreMode').value === 'auto';
       $('#pointField').classList.toggle('hidden', isAuto);
       $('#autoPointInfo').classList.toggle('hidden', !isAuto);
+    }
+
+    function toggleTimeLimit() {
+      const isCustom = $('#timeLimit').value === 'custom';
+      $('#customTimeField').classList.toggle('hidden', !isCustom);
+      $('#customTimeLimit').required = isCustom;
     }
 
     function showNotice(element, message, type = 'info') {
@@ -456,7 +469,9 @@
       const pointPerQuestion = Number($('#pointPerQuestion').value);
       const passScore = Number($('#passScore').value);
       const subjectCutoff = Number($('#subjectCutoff').value);
-      const timeLimit = Number($('#timeLimit').value);
+      const selectedTimeLimit = $('#timeLimit').value;
+      const customTimeLimit = Number.parseInt($('#customTimeLimit').value, 10);
+      const timeLimit = selectedTimeLimit === 'custom' ? 0 : Number(selectedTimeLimit);
       const subjects = [...document.querySelectorAll('.subject-row')].map((row, index) => ({
         name: row.querySelector('.subject-name').value.trim() || `${index + 1}과목`,
         count: Number.parseInt(row.querySelector('.subject-count').value, 10)
@@ -468,6 +483,8 @@
       if (![passScore, subjectCutoff].every(value => Number.isFinite(value) && value >= 0 && value <= 100)) throw new Error('합격 및 과락 기준은 0~100 사이로 입력하세요.');
       if (![0, 30, 60, 90].includes(timeLimit)) throw new Error('제한시간 옵션을 다시 선택하세요.');
 
+      if (selectedTimeLimit === 'custom' && (!Number.isInteger(customTimeLimit) || customTimeLimit < 1 || customTimeLimit > 720)) throw new Error('Enter a custom time limit between 1 and 720 minutes.');
+
       const totalQuestions = subjects.reduce((sum, subject) => sum + subject.count, 0);
       return {
         subjects,
@@ -476,7 +493,7 @@
         pointPerQuestion: scoreMode === 'auto' ? 100 / totalQuestions : pointPerQuestion,
         passScore,
         subjectCutoff,
-        timeLimit,
+        timeLimit: selectedTimeLimit === 'custom' ? customTimeLimit : timeLimit,
         totalQuestions
       };
     }
@@ -723,6 +740,7 @@
 
     $('#subjectCount').addEventListener('change', () => renderSubjectSettings());
     $('#scoreMode').addEventListener('change', toggleScoreMode);
+    $('#timeLimit').addEventListener('change', toggleTimeLimit);
     $('#adspPresetButton').addEventListener('click', () => applyFormConfig(presets.adsp));
     $('#engineerPresetButton').addEventListener('click', () => applyFormConfig(presets.engineer));
     $('#resetPresetButton').addEventListener('click', () => applyFormConfig(defaultConfig));

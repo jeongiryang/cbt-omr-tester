@@ -175,30 +175,37 @@
     .answer-good { color: var(--good); font-weight: 800; }
     .all-correct { padding: 16px; border-radius: 10px; color: var(--good); background: #ecfaf4; font-size: .9rem; font-weight: 700; }
 
-    @media (max-width: 720px) {
+    @media (max-width: 768px) {
       .app { width: min(100% - 20px, 1120px); padding-top: 22px; }
       .form-grid, .answer-grid { grid-template-columns: 1fr; }
+      .preset-bar { align-items: stretch; }
+      .preset-label { flex-basis: 100%; }
+      .preset-button { flex: 1 1 140px; min-height: 44px; }
       .subject-row { grid-template-columns: 34px minmax(0, 1fr); }
       .subject-row .question-count { grid-column: 2; }
       .exam-top { align-items: stretch; flex-direction: column; gap: 11px; }
-      .exam-actions { justify-content: space-between; flex-wrap: wrap; }
-      .progress-wrap { min-width: 0; text-align: left; }
+      .exam-actions { justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+      .timer-box, #resetAnswersButton { min-height: 44px; }
+      .timer-box { flex: 1 1 118px; }
+      #resetAnswersButton { flex: 1 1 128px; }
+      .progress-wrap { flex-basis: 100%; min-width: 0; text-align: left; }
       .progress-stats { justify-content: flex-start; }
       .questions { grid-template-columns: 1fr; }
       .question:nth-child(odd) { border-right: 0; }
-      .subject-header { padding: 15px; }
-      .question { padding: 9px 14px; }
+      .subject-header { flex-wrap: wrap; padding: 15px; }
+      .question { min-height: 72px; gap: 8px; padding: 12px 14px; }
+      .question-number { flex-basis: 36px; }
+      .omr-choice { max-width: 42px; }
+      .omr-choice span { min-width: 42px; height: 42px; }
       .result-grid { grid-template-columns: 1fr; }
       .quick-paste-row { grid-template-columns: 1fr; }
       .quick-paste-row .button { width: 100%; }
+      .actions { display: block; }
+      .actions .button { width: 100%; min-height: 48px; }
     }
     @media (max-width: 390px) {
-      .question { gap: 8px; }
       .question-number { flex-basis: 34px; font-size: .79rem; }
-      .omr-choice span { min-width: 27px; height: 31px; }
       .score-cards { grid-template-columns: 1fr; }
-      .preset-bar { align-items: stretch; }
-      .preset-button { flex: 1; }
     }
   </style>
 </head>

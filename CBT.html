@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스마트 OMR · 자동 채점</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #dbe3ee;
+      --panel: #ffffff;
+      --surface: #f4f7fb;
+      --primary: #3563e9;
+      --primary-soft: #edf2ff;
+      --good: #12805c;
+      --bad: #c83f4b;
+      --shadow: 0 16px 45px rgba(24, 42, 84, .09);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background: var(--surface);
+      font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", Arial, sans-serif;
+      line-height: 1.5;
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    .app { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 36px 0 64px; }
+    .hero { margin-bottom: 24px; }
+    .eyebrow { margin: 0 0 7px; color: var(--primary); font-weight: 800; font-size: .78rem; letter-spacing: .1em; }
+    h1 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.35rem); letter-spacing: -.045em; }
+    .hero p { margin: 8px 0 0; color: var(--muted); }
+    .card {
+      background: var(--panel); border: 1px solid rgba(219, 227, 238, .9);
+      border-radius: 18px; box-shadow: var(--shadow); padding: clamp(18px, 3vw, 30px);
+    }
+    .setting-card { max-width: 910px; }
+    .section-title { margin: 0; font-size: 1.14rem; letter-spacing: -.025em; }
+    .section-help { color: var(--muted); margin: 5px 0 18px; font-size: .92rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    .field-label { display: block; margin-bottom: 7px; font-weight: 750; font-size: .92rem; }
+    .sub-label { display: block; color: var(--muted); font-size: .78rem; font-weight: 500; margin-top: 1px; }
+    input[type="number"], input[type="text"], textarea, select {
+      width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 10px;
+      padding: 10px 12px; color: var(--ink); background: #fff; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    textarea { min-height: 89px; resize: vertical; line-height: 1.55; }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(53, 99, 233, .13); }
+    .choice-group { display: flex; flex-wrap: wrap; gap: 9px; }
+    .seg-choice { position: relative; }
+    .seg-choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .seg-choice span {
+      display: block; min-width: 92px; padding: 10px 14px; border: 1px solid var(--line);
+      border-radius: 10px; background: #fff; color: #43516a; text-align: center; font-size: .9rem;
+      font-weight: 700; transition: .15s;
+    }
+    .seg-choice input:checked + span { color: var(--primary); background: var(--primary-soft); border-color: var(--primary); }
+    .subject-settings { display: grid; gap: 10px; }
+    .subject-row {
+      display: grid; grid-template-columns: 42px minmax(0, 1fr) 150px; align-items: end; gap: 10px;
+      padding: 13px; border: 1px solid #e6ecf4; border-radius: 12px; background: #fafcff;
+    }
+    .subject-no { align-self: center; width: 31px; height: 31px; display: grid; place-items: center; border-radius: 50%; background: #e9efff; color: var(--primary); font-size: .82rem; font-weight: 800; }
+    .mini-label { display: block; margin: 0 0 4px; color: var(--muted); font-size: .76rem; font-weight: 700; }
+    .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+    .button {
+      border: 0; border-radius: 10px; padding: 12px 17px; color: #fff; background: var(--primary);
+      font-weight: 800; box-shadow: 0 7px 16px rgba(53, 99, 233, .22); transition: transform .15s, opacity .15s;
+    }
+    .button:hover { transform: translateY(-1px); }
+    .button.secondary { color: var(--primary); background: var(--primary-soft); box-shadow: none; }
+    .button.small { padding: 9px 12px; font-size: .86rem; }
+    .hidden { display: none !important; }
+
+    .exam-top {
+      position: sticky; top: 10px; z-index: 10; display: flex; justify-content: space-between; gap: 18px;
+      margin-bottom: 20px; padding: 16px 18px; background: rgba(255,255,255,.93); backdrop-filter: blur(10px);
+      border: 1px solid rgba(219,227,238,.95); border-radius: 14px; box-shadow: 0 8px 25px rgba(24,42,84,.08);
+    }
+    .exam-title { margin: 0; font-size: 1rem; }
+    .exam-meta { color: var(--muted); font-size: .82rem; }
+    .progress-wrap { min-width: min(330px, 46vw); text-align: right; }
+    .progress-stats { display: flex; justify-content: flex-end; gap: 9px; align-items: baseline; font-size: .82rem; color: var(--muted); }
+    .progress-stats strong { color: var(--ink); font-size: .96rem; }
+    .progress-bar { height: 7px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: #e8edf6; }
+    .progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #4f7cf4, #6c4fe9); transition: width .2s ease; }
+    .subjects { display: grid; gap: 18px; }
+    .subject-card { padding: 0; overflow: hidden; }
+    .subject-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--line); background: #fbfcff; }
+    .subject-header h2 { margin: 0; font-size: 1.08rem; letter-spacing: -.02em; }
+    .subject-header span { color: var(--muted); font-size: .82rem; white-space: nowrap; }
+    .questions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .question { display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 18px; border-bottom: 1px solid #edf1f6; }
+    .question:nth-child(odd) { border-right: 1px solid #edf1f6; }
+    .question-number { flex: 0 0 42px; color: #4c5c76; font-size: .88rem; font-weight: 800; }
+    .omr-options { display: flex; flex: 1; justify-content: space-between; gap: 5px; }
+    .omr-choice { position: relative; flex: 1; max-width: 42px; }
+    .omr-choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .omr-choice span { display: grid; place-items: center; height: 34px; min-width: 30px; border: 1px solid #cfd8e7; border-radius: 50%; color: #60708a; background: #fff; font-size: .83rem; font-weight: 800; transition: .15s; }
+    .omr-choice:hover span { border-color: #7897ee; color: var(--primary); }
+    .omr-choice input:checked + span { color: #fff; border-color: var(--primary); background: var(--primary); box-shadow: 0 3px 8px rgba(53,99,233,.24); }
+    .answer-area { margin-top: 24px; }
+    .answer-note { margin: 0 0 15px; color: var(--muted); font-size: .86rem; }
+    .answer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .answer-box { padding: 15px; border: 1px solid #e2e9f3; border-radius: 12px; background: #fbfcff; }
+    .answer-box label { display: block; margin-bottom: 7px; font-size: .88rem; font-weight: 800; }
+    .answer-box small { display: block; color: var(--muted); margin: -3px 0 8px; font-size: .75rem; }
+    .notice { margin-top: 14px; padding: 12px 14px; border-radius: 10px; font-size: .88rem; }
+    .notice.error { color: #982b35; background: #fff1f2; border: 1px solid #fecdd3; }
+
+    .result-area { margin-top: 26px; }
+    .result-heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 14px; }
+    .result-heading h2 { margin: 0; font-size: 1.25rem; }
+    .result-summary { border-left: 6px solid var(--primary); }
+    .result-summary.pass { border-left-color: var(--good); }
+    .result-summary.fail { border-left-color: var(--bad); }
+    .result-grid { display: grid; grid-template-columns: minmax(190px, .9fr) 2fr; gap: 24px; align-items: center; }
+    .verdict { display: flex; align-items: center; gap: 14px; }
+    .verdict-mark { width: 56px; height: 56px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; color: var(--good); background: #e8f8f1; font-size: 1.75rem; font-weight: 900; }
+    .fail .verdict-mark { color: var(--bad); background: #fff0f1; }
+    .verdict h3 { margin: 0; font-size: 1.35rem; }
+    .verdict p { margin: 2px 0 0; color: var(--muted); font-size: .86rem; }
+    .score-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .score-item { padding: 12px; border: 1px solid #e1e8f3; border-radius: 11px; background: #fbfcff; }
+    .score-item span { display: block; color: var(--muted); font-size: .74rem; }
+    .score-item strong { display: block; margin-top: 3px; font-size: 1.05rem; }
+    .subject-result-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 18px; }
+    .subject-score { padding: 14px; border: 1px solid #e1e8f3; border-radius: 11px; }
+    .subject-score h3 { margin: 0 0 5px; font-size: .92rem; }
+    .subject-score p { margin: 0; color: var(--muted); font-size: .8rem; }
+    .subject-score strong { color: var(--ink); }
+    .subject-score .status { display: inline-block; margin-top: 8px; padding: 3px 7px; border-radius: 99px; color: var(--good); background: #e8f8f1; font-size: .72rem; font-weight: 800; }
+    .subject-score .status.over { color: var(--bad); background: #fff0f1; }
+    .wrong-card { margin-top: 18px; }
+    .wrong-card h3 { margin: 0 0 5px; font-size: 1rem; }
+    .wrong-card p { margin: 0 0 13px; color: var(--muted); font-size: .84rem; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: .88rem; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid #e7edf5; text-align: left; }
+    th { color: #52627c; background: #f8faff; font-size: .78rem; }
+    .answer-bad { color: var(--bad); font-weight: 800; }
+    .answer-good { color: var(--good); font-weight: 800; }
+    .all-correct { padding: 16px; border-radius: 10px; color: var(--good); background: #ecfaf4; font-size: .9rem; font-weight: 700; }
+
+    @media (max-width: 720px) {
+      .app { width: min(100% - 20px, 1120px); padding-top: 22px; }
+      .form-grid, .answer-grid { grid-template-columns: 1fr; }
+      .subject-row { grid-template-columns: 34px minmax(0, 1fr); }
+      .subject-row .question-count { grid-column: 2; }
+      .exam-top { align-items: stretch; flex-direction: column; gap: 11px; }
+      .progress-wrap { min-width: 0; text-align: left; }
+      .progress-stats { justify-content: flex-start; }
+      .questions { grid-template-columns: 1fr; }
+      .question:nth-child(odd) { border-right: 0; }
+      .subject-header { padding: 15px; }
+      .question { padding: 9px 14px; }
+      .result-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 390px) {
+      .question { gap: 8px; }
+      .question-number { flex-basis: 34px; font-size: .79rem; }
+      .omr-choice span { min-width: 27px; height: 31px; }
+      .score-cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <p class="eyebrow">BROWSER-ONLY OMR SYSTEM</p>
+      <h1>스마트 OMR · 자동 채점</h1>
+      <p>시험 조건을 설정하고, 답안을 마킹한 뒤 정답지만 입력하면 바로 채점됩니다.</p>
+    </header>
+
+    <section id="setupScreen" class="card setting-card" aria-labelledby="setupTitle">
+      <h2 id="setupTitle" class="section-title">시험 기본 설정</h2>
+      <p class="section-help">과목 수를 바꾸면 아래 과목별 이름과 문항 수 입력란이 자동으로 조정됩니다.</p>
+
+      <div class="form-grid">
+        <div class="field">
+          <label class="field-label" for="subjectCount">전체 과목 수</label>
+          <input id="subjectCount" type="number" min="1" max="20" value="3">
+        </div>
+        <div class="field">
+          <span class="field-label">선다형 선택</span>
+          <div class="choice-group" aria-label="선다형 선택">
+            <label class="seg-choice"><input type="radio" name="optionCount" value="4" checked><span>4지선다</span></label>
+            <label class="seg-choice"><input type="radio" name="optionCount" value="5"><span>5지선다</span></label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="scoreMode">문항 배점 방식</label>
+          <select id="scoreMode">
+            <option value="manual">문항당 배점 직접 입력</option>
+            <option value="auto">총점 100점 자동 계산</option>
+          </select>
+        </div>
+        <div class="field" id="pointField">
+          <label class="field-label" for="pointPerQuestion">문항당 배점 <span class="sub-label">예: 2점을 입력하면 1문항당 2점</span></label>
+          <input id="pointPerQuestion" type="number" min="0.01" step="0.01" value="2">
+        </div>
+        <div class="field full hidden" id="autoPointInfo">
+          <div class="notice" style="margin:0; color:#3159ba; background:#eef3ff; border:1px solid #d7e2ff;">총 문항 수를 기준으로 문항당 배점이 자동 계산되며, 전체 원점수도 100점 만점입니다.</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="passScore">전체 합격 기준 <span class="sub-label">100점 환산 점수 기준</span></label>
+          <input id="passScore" type="number" min="0" max="100" step="0.1" value="60">
+        </div>
+        <div class="field">
+          <label class="field-label" for="subjectCutoff">과목별 과락 기준 <span class="sub-label">이 점수 미만이면 과락 (100점 환산)</span></label>
+          <input id="subjectCutoff" type="number" min="0" max="100" step="0.1" value="40">
+        </div>
+
+        <div class="field full">
+          <span class="field-label">과목별 설정</span>
+          <div id="subjectSettings" class="subject-settings"></div>
+        </div>
+      </div>
+      <div id="setupError" class="notice error hidden" role="alert"></div>
+      <div class="actions"><button id="startButton" class="button" type="button">시험 시작하기 →</button></div>
+    </section>
+
+    <section id="examScreen" class="hidden" aria-live="polite">
+      <div class="exam-top">
+        <div>
+          <h2 id="examTitle" class="exam-title">시험 답안지</h2>
+          <div id="examMeta" class="exam-meta"></div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-stats"><strong id="progressText">0 / 0</strong><span id="unansweredText">미응답 0문항</span></div>
+          <div class="progress-bar" aria-label="시험 진행률"><span id="progressFill"></span></div>
+        </div>
+      </div>
+
+      <div id="subjects" class="subjects"></div>
+
+      <section class="card answer-area" aria-labelledby="answerTitle">
+        <h2 id="answerTitle" class="section-title">정답지 입력</h2>
+        <p class="answer-note">각 과목의 정답을 문제 순서대로 입력하세요. 공백·쉼표로 구분하거나 붙여서 입력할 수 있습니다. 예: <strong>1 2 3 4</strong> 또는 <strong>1234</strong></p>
+        <div id="answerInputs" class="answer-grid"></div>
+        <div id="gradeError" class="notice error hidden" role="alert"></div>
+        <div class="actions">
+          <button id="gradeButton" class="button" type="button">채점하기</button>
+        </div>
+      </section>
+
+      <section id="resultArea" class="result-area hidden" aria-live="polite"></section>
+    </section>
+  </main>
+
+  <script>
+    const state = { config: null, answers: new Map() };
+    const optionLabels = ['①', '②', '③', '④', '⑤'];
+    const $ = (selector) => document.querySelector(selector);
+
+    function subjectRow(index, data = {}) {
+      const number = index + 1;
+      const name = data.name ?? `${number}과목`;
+      const count = data.count ?? 10;
+      return `
+        <div class="subject-row">
+          <span class="subject-no">${number}</span>
+          <label> <span class="mini-label">과목명</span>
+            <input class="subject-name" type="text" maxlength="40" value="${escapeHtml(name)}" placeholder="예: 데이터 분석">
+          </label>
+          <label class="question-count"> <span class="mini-label">문항 수</span>
+            <input class="subject-count" type="number" min="1" max="200" value="${count}">
+          </label>
+        </div>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+    }
+
+    function renderSubjectSettings() {
+      const count = Math.max(1, Math.min(20, Number.parseInt($('#subjectCount').value, 10) || 1));
+      const previous = [...document.querySelectorAll('.subject-row')].map(row => ({
+        name: row.querySelector('.subject-name').value,
+        count: row.querySelector('.subject-count').value
+      }));
+      $('#subjectCount').value = count;
+      $('#subjectSettings').innerHTML = Array.from({ length: count }, (_, i) => subjectRow(i, previous[i])).join('');
+    }
+
+    function toggleScoreMode() {
+      const isAuto = $('#scoreMode').value === 'auto';
+      $('#pointField').classList.toggle('hidden', isAuto);
+      $('#autoPointInfo').classList.toggle('hidden', !isAuto);
+    }
+
+    function showError(element, message) {
+      element.textContent = message;
+      element.classList.remove('hidden');
+    }
+
+    function getConfig() {
+      const subjectCount = Number.parseInt($('#subjectCount').value, 10);
+      const optionCount = Number(document.querySelector('input[name="optionCount"]:checked').value);
+      const scoreMode = $('#scoreMode').value;
+      const pointPerQuestion = Number($('#pointPerQuestion').value);
+      const passScore = Number($('#passScore').value);
+      const subjectCutoff = Number($('#subjectCutoff').value);
+      const subjects = [...document.querySelectorAll('.subject-row')].map((row, index) => ({
+        name: row.querySelector('.subject-name').value.trim() || `${index + 1}과목`,
+        count: Number.parseInt(row.querySelector('.subject-count').value, 10)
+      }));
+
+      if (!Number.isInteger(subjectCount) || subjectCount < 1 || subjectCount > 20) throw new Error('과목 수는 1~20개 사이로 입력해 주세요.');
+      if (subjects.length !== subjectCount || subjects.some(subject => !Number.isInteger(subject.count) || subject.count < 1 || subject.count > 200)) throw new Error('각 과목의 문항 수는 1~200개 사이로 입력해 주세요.');
+      if (scoreMode === 'manual' && (!Number.isFinite(pointPerQuestion) || pointPerQuestion <= 0)) throw new Error('문항당 배점은 0보다 크게 입력해 주세요.');
+      if (![passScore, subjectCutoff].every(value => Number.isFinite(value) && value >= 0 && value <= 100)) throw new Error('합격 및 과락 기준은 0~100점 사이로 입력해 주세요.');
+
+      const totalQuestions = subjects.reduce((sum, subject) => sum + subject.count, 0);
+      return { subjects, optionCount, scoreMode, pointPerQuestion: scoreMode === 'auto' ? 100 / totalQuestions : pointPerQuestion, passScore, subjectCutoff, totalQuestions };
+    }
+
+    function startExam() {
+      $('#setupError').classList.add('hidden');
+      try {
+        state.config = getConfig();
+      } catch (error) {
+        showError($('#setupError'), error.message);
+        return;
+      }
+      state.answers = new Map();
+      $('#setupScreen').classList.add('hidden');
+      $('#examScreen').classList.remove('hidden');
+      $('#resultArea').classList.add('hidden');
+      renderExam();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderExam() {
+      const config = state.config;
+      $('#examTitle').textContent = `시험 답안지 · ${config.subjects.length}과목`;
+      $('#examMeta').textContent = `${config.optionCount}지선다 · 총 ${config.totalQuestions}문항 · ${config.scoreMode === 'auto' ? '100점 자동 배점' : `문항당 ${formatNumber(config.pointPerQuestion)}점`}`;
+      let questionNumber = 1;
+      $('#subjects').innerHTML = config.subjects.map((subject, subjectIndex) => {
+        const first = questionNumber;
+        const questionRows = Array.from({ length: subject.count }, () => {
+          const current = questionNumber++;
+          return questionTemplate(current, subjectIndex, config.optionCount);
+        }).join('');
+        return `<section class="card subject-card"><div class="subject-header"><h2>${escapeHtml(subject.name)}</h2><span>${first}~${questionNumber - 1}번 · ${subject.count}문항</span></div><div class="questions">${questionRows}</div></section>`;
+      }).join('');
+
+      $('#answerInputs').innerHTML = config.subjects.map((subject, index) => `
+        <div class="answer-box">
+          <label for="key-${index}">${escapeHtml(subject.name)} 정답</label>
+          <small>${subject.count}개 입력 · ${config.optionCount}지선다</small>
+          <textarea id="key-${index}" data-subject-index="${index}" placeholder="예: ${Array.from({ length: Math.min(subject.count, 10) }, (_, i) => (i % config.optionCount) + 1).join(' ')}"></textarea>
+        </div>`).join('');
+
+      document.querySelectorAll('.answer-radio').forEach(input => input.addEventListener('change', event => {
+        state.answers.set(Number(event.target.dataset.question), Number(event.target.value));
+        updateProgress();
+      }));
+      updateProgress();
+    }
+
+    function questionTemplate(questionNumber, subjectIndex, optionCount) {
+      const options = Array.from({ length: optionCount }, (_, optionIndex) => {
+        const value = optionIndex + 1;
+        return `<label class="omr-choice"><input class="answer-radio" type="radio" name="question-${questionNumber}" value="${value}" data-question="${questionNumber}" data-subject="${subjectIndex}" aria-label="${questionNumber}번 ${optionLabels[optionIndex]}"><span>${optionLabels[optionIndex]}</span></label>`;
+      }).join('');
+      return `<div class="question"><span class="question-number">${questionNumber}번</span><div class="omr-options">${options}</div></div>`;
+    }
+
+    function updateProgress() {
+      const total = state.config.totalQuestions;
+      const done = state.answers.size;
+      const percentage = total ? done / total * 100 : 0;
+      $('#progressText').textContent = `${done} / ${total}`;
+      $('#unansweredText').textContent = `미응답 ${total - done}문항`;
+      $('#progressFill').style.width = `${percentage}%`;
+    }
+
+    function parseAnswerKey(text, questionCount, optionCount) {
+      const trimmed = text.trim();
+      if (!trimmed) throw new Error(`정답 ${questionCount}개를 입력해 주세요.`);
+      let tokens = trimmed.replace(/[;,|/]+/g, ' ').split(/\s+/).filter(Boolean);
+      if (tokens.length === 1 && new RegExp(`^[1-${optionCount}]+$`).test(tokens[0]) && tokens[0].length > 1) tokens = [...tokens[0]];
+      if (tokens.some(token => !new RegExp(`^[1-${optionCount}]$`).test(token))) throw new Error(`${optionCount}지선다에서는 1~${optionCount}만 입력할 수 있습니다.`);
+      if (tokens.length !== questionCount) throw new Error(`정답 수가 ${tokens.length}개입니다. ${questionCount}개를 입력해 주세요.`);
+      return tokens.map(Number);
+    }
+
+    function gradeExam() {
+      const config = state.config;
+      $('#gradeError').classList.add('hidden');
+      const keys = [];
+      try {
+        config.subjects.forEach((subject, index) => {
+          try {
+            keys.push(parseAnswerKey($(`#key-${index}`).value, subject.count, config.optionCount));
+          } catch (error) {
+            throw new Error(`${subject.name}: ${error.message}`);
+          }
+        });
+      } catch (error) {
+        showError($('#gradeError'), error.message);
+        return;
+      }
+
+      const subjectResults = [];
+      const wrongs = [];
+      let globalQuestion = 1;
+      let totalCorrect = 0;
+      config.subjects.forEach((subject, subjectIndex) => {
+        let correct = 0;
+        keys[subjectIndex].forEach((key, localIndex) => {
+          const submitted = state.answers.get(globalQuestion);
+          if (submitted === key) correct++;
+          else wrongs.push({ question: globalQuestion, subject: subject.name, submitted, key });
+          globalQuestion++;
+        });
+        totalCorrect += correct;
+        const convertedScore = correct / subject.count * 100;
+        subjectResults.push({ ...subject, correct, convertedScore, rawScore: correct * config.pointPerQuestion, isFail: convertedScore < config.subjectCutoff });
+      });
+
+      const rawTotal = totalCorrect * config.pointPerQuestion;
+      const convertedTotal = totalCorrect / config.totalQuestions * 100;
+      const failedSubjects = subjectResults.filter(result => result.isFail);
+      const reasons = [];
+      if (convertedTotal < config.passScore) reasons.push(`전체 점수 ${formatNumber(convertedTotal)}점이 합격 기준 ${formatNumber(config.passScore)}점 미만`);
+      if (failedSubjects.length) reasons.push(`${failedSubjects.map(result => `${result.name} 과락(${formatNumber(result.convertedScore)}점)`).join(', ')}`);
+      const passed = reasons.length === 0;
+      renderResult({ passed, reasons, subjectResults, wrongs, rawTotal, convertedTotal, totalCorrect });
+      $('#resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderResult(result) {
+      const config = state.config;
+      const rawMax = config.totalQuestions * config.pointPerQuestion;
+      const subjectScores = result.subjectResults.map(item => `
+        <article class="subject-score">
+          <h3>${escapeHtml(item.name)}</h3>
+          <p><strong>${item.correct} / ${item.count} 정답</strong> · ${formatNumber(item.convertedScore)}점 환산</p>
+          <p>원점수 ${formatNumber(item.rawScore)} / ${formatNumber(item.count * config.pointPerQuestion)}점</p>
+          <span class="status ${item.isFail ? 'over' : ''}">${item.isFail ? '과락' : '기준 통과'}</span>
+        </article>`).join('');
+      const wrongRows = result.wrongs.map(item => `<tr><td>${item.question}번</td><td>${escapeHtml(item.subject)}</td><td class="answer-bad">${item.submitted ? optionLabels[item.submitted - 1] : '미응답'}</td><td class="answer-good">${optionLabels[item.key - 1]}</td></tr>`).join('');
+      const verdictDetail = result.passed ? `전체 ${formatNumber(result.convertedTotal)}점, 모든 과목이 과락 기준을 통과했습니다.` : result.reasons.join(' · ');
+      $('#resultArea').innerHTML = `
+        <div class="result-heading"><h2>채점 결과</h2><button id="regradeButton" class="button secondary small" type="button">답안 수정 후 다시 채점</button></div>
+        <div class="card result-summary ${result.passed ? 'pass' : 'fail'}">
+          <div class="result-grid">
+            <div class="verdict"><div class="verdict-mark">${result.passed ? '✓' : '!'}</div><div><h3>${result.passed ? '합격' : '불합격'}</h3><p>${escapeHtml(verdictDetail)}</p></div></div>
+            <div class="score-cards">
+              <div class="score-item"><span>총 정답</span><strong>${result.totalCorrect} / ${config.totalQuestions}</strong></div>
+              <div class="score-item"><span>100점 환산</span><strong>${formatNumber(result.convertedTotal)}점</strong></div>
+              <div class="score-item"><span>원점수</span><strong>${formatNumber(result.rawTotal)} / ${formatNumber(rawMax)}점</strong></div>
+            </div>
+          </div>
+          <div class="subject-result-list">${subjectScores}</div>
+        </div>
+        <div class="card wrong-card">
+          <h3>오답 및 미응답 ${result.wrongs.length}문항</h3>
+          <p>제출한 답과 정답을 비교해 보세요.</p>
+          ${result.wrongs.length ? `<div class="table-wrap"><table><thead><tr><th>문제</th><th>과목</th><th>제출 답</th><th>정답</th></tr></thead><tbody>${wrongRows}</tbody></table></div>` : '<div class="all-correct">모든 문제를 정확하게 맞혔습니다. 훌륭해요!</div>'}
+        </div>`;
+      $('#resultArea').classList.remove('hidden');
+      $('#regradeButton').addEventListener('click', () => {
+        $('#resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelector('#answerTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+
+    function formatNumber(value) {
+      return Number(value.toFixed(2)).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+    }
+
+    $('#subjectCount').addEventListener('change', renderSubjectSettings);
+    $('#scoreMode').addEventListener('change', toggleScoreMode);
+    $('#startButton').addEventListener('click', startExam);
+    $('#gradeButton').addEventListener('click', gradeExam);
+    renderSubjectSettings();
+  </script>
+</body>
+</html>

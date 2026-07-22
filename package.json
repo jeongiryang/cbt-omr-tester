@@ -1,0 +1,10 @@
+{
+  "name": "cbt-omr-tester",
+  "private": true,
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  },
+  "scripts": {
+    "capture": "node scripts/capture-screenshot.cjs"
+  }
+}

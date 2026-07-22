@@ -1,11 +1,9 @@
 # CBT OMR Tester
 
 [![Release](https://img.shields.io/github/v/release/jeongiryang/cbt-omr-tester?color=blue&label=Latest%20Release)](https://github.com/jeongiryang/cbt-omr-tester/releases/latest)
-[![Run CBT](https://img.shields.io/badge/CBT_Run-Click_Here-success)](https://github.com/jeongiryang/cbt-omr-tester/releases/download/v1.0.0/CBT.html)
+[![Run CBT](https://img.shields.io/badge/CBT_Run-Click_Here-success)](https://cbt-omr-tester.vercel.app/)
 
-[바로가기]
-
-- [CBT.html 바로가기](https://github.com/jeongiryang/cbt-omr-tester/releases/download/v1.0.0/CBT.html)
+- [CBT.html 바로가기](https://cbt-omr-tester.vercel.app/)
 
 ---
 

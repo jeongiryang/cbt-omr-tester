@@ -32,3 +32,7 @@ npm run capture
 ```
 
 Playwright 및 헤드리스 브라우저를 사용하여 프로젝트 루트의 `screenshot.png`를 자동 갱신함
+
+---
+
+**_향후 모바일 앱으로 배포 및 기능 고도화 예정_**

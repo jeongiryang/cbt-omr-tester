@@ -1,5 +1,15 @@
 # CBT OMR Tester
 
+[![Release](https://img.shields.io/github/v/release/jeongiryang/cbt-omr-tester?color=blue&label=Latest%20Release)](https://github.com/jeongiryang/cbt-omr-tester/releases/latest)
+[![Run CBT](https://img.shields.io/badge/CBT_Run-Click_Here-success)](https://github.com/jeongiryang/cbt-omr-tester/releases/latest)
+
+[바로가기]
+
+- 최신 릴리스에서 CBT.html 다운로드: [https://github.com/jeongiryang/cbt-omr-tester/releases/latest](https://github.com/jeongiryang/cbt-omr-tester/releases/latest)
+- CBT.html 파일 직접 보기: [CBT.html](./CBT.html)
+
+---
+
 ![CBT Preview](./screenshot.png)
 
 > 자격증 및 모의고사 대비를 위한 사용자 맞춤형 단일 HTML 기반 웹 OMR & 자동 채점 도구임

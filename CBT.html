@@ -185,8 +185,9 @@
       .subject-row .question-count { grid-column: 2; }
       .exam-top { align-items: stretch; flex-direction: column; gap: 11px; }
       .exam-actions { justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-      .timer-box, #resetAnswersButton { min-height: 44px; }
+      .timer-box, .timer-control, #resetAnswersButton { min-height: 44px; }
       .timer-box { flex: 1 1 118px; }
+      .timer-control { flex: 1 1 118px; white-space: nowrap; }
       #resetAnswersButton { flex: 1 1 128px; }
       .progress-wrap { flex-basis: 100%; min-width: 0; text-align: left; }
       .progress-stats { justify-content: flex-start; }
@@ -297,6 +298,8 @@
             <span id="timerLabel" class="timer-label">경과 시간</span>
             <strong id="timerValue" class="timer-value">00:00</strong>
           </div>
+          <button id="timerPauseButton" class="button secondary small timer-control" type="button">일시정지</button>
+          <button id="resetTimerButton" class="button secondary small timer-control" type="button">타이머 초기화</button>
           <button id="resetAnswersButton" class="button secondary small" type="button">답안 초기화</button>
           <div class="progress-wrap">
             <div class="progress-stats"><strong id="progressText">0 / 0</strong><span id="unansweredText">미응답 0문항</span></div>
@@ -382,6 +385,9 @@
       timerId: null,
       startedAt: null,
       deadline: null,
+      timerPaused: false,
+      pausedRemaining: null,
+      pausedElapsed: 0,
       timeExpired: false
     };
 
@@ -577,8 +583,12 @@
       stopTimer();
       state.startedAt = Date.now();
       state.deadline = state.config.timeLimit ? state.startedAt + state.config.timeLimit * 60 * 1000 : null;
+      state.timerPaused = false;
+      state.pausedRemaining = null;
+      state.pausedElapsed = 0;
       updateTimer();
       state.timerId = window.setInterval(updateTimer, 250);
+      updateTimerControls();
     }
 
     function stopTimer() {
@@ -589,6 +599,12 @@
     function updateTimer() {
       if (!state.config || state.timeExpired) return;
       const timerBox = $('#timerBox');
+      if (state.timerPaused) {
+        timerBox.classList.toggle('unlimited', !state.deadline);
+        $('#timerLabel').textContent = '일시정지';
+        $('#timerValue').textContent = formatDuration(state.deadline ? state.pausedRemaining : state.pausedElapsed);
+        return;
+      }
       if (state.deadline) {
         const remaining = Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
         timerBox.classList.remove('unlimited');
@@ -602,10 +618,57 @@
       }
     }
 
+    function updateTimerControls() {
+      const isUnavailable = !state.config || state.timeExpired;
+      $('#timerPauseButton').disabled = isUnavailable;
+      $('#resetTimerButton').disabled = isUnavailable;
+      $('#timerPauseButton').textContent = state.timerPaused ? '다시 시작' : '일시정지';
+    }
+
+    function pauseTimer() {
+      if (!state.config || state.timeExpired || state.timerPaused) return;
+      state.pausedRemaining = state.deadline ? Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000)) : null;
+      state.pausedElapsed = state.deadline ? 0 : Math.floor((Date.now() - state.startedAt) / 1000);
+      state.timerPaused = true;
+      stopTimer();
+      updateTimer();
+      updateTimerControls();
+    }
+
+    function resumeTimer() {
+      if (!state.config || state.timeExpired || !state.timerPaused) return;
+      const now = Date.now();
+      if (state.deadline) state.deadline = now + state.pausedRemaining * 1000;
+      else state.startedAt = now - state.pausedElapsed * 1000;
+      state.timerPaused = false;
+      state.timerId = window.setInterval(updateTimer, 250);
+      updateTimer();
+      updateTimerControls();
+    }
+
+    function toggleTimerPause() {
+      if (state.timerPaused) resumeTimer();
+      else pauseTimer();
+    }
+
+    function resetTimer() {
+      if (!state.config || state.timeExpired) return;
+      stopTimer();
+      state.startedAt = Date.now();
+      state.deadline = state.config.timeLimit ? state.startedAt + state.config.timeLimit * 60 * 1000 : null;
+      state.timerPaused = false;
+      state.pausedRemaining = null;
+      state.pausedElapsed = 0;
+      updateTimer();
+      state.timerId = window.setInterval(updateTimer, 250);
+      updateTimerControls();
+    }
+
     function finishExamByTime() {
       if (state.timeExpired) return;
       state.timeExpired = true;
       stopTimer();
+      updateTimerControls();
       $('#timerLabel').textContent = '시험 종료';
       $('#timerValue').textContent = '00:00';
       document.querySelectorAll('.answer-radio').forEach(input => { input.disabled = true; });
@@ -745,6 +808,8 @@
     $('#engineerPresetButton').addEventListener('click', () => applyFormConfig(presets.engineer));
     $('#resetPresetButton').addEventListener('click', () => applyFormConfig(defaultConfig));
     $('#startButton').addEventListener('click', startExam);
+    $('#timerPauseButton').addEventListener('click', toggleTimerPause);
+    $('#resetTimerButton').addEventListener('click', resetTimer);
     $('#resetAnswersButton').addEventListener('click', resetAnswers);
     $('#quickPasteButton').addEventListener('click', quickPasteAnswers);
     $('#quickPasteInput').addEventListener('paste', () => window.setTimeout(quickPasteAnswers, 0));

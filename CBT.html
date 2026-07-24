@@ -109,8 +109,9 @@
     .timer-value { display: block; color: var(--primary); font-size: 1.15rem; font-weight: 900; font-variant-numeric: tabular-nums; }
     .timer-box.unlimited .timer-value { color: #475569; font-size: .98rem; }
     .progress-wrap { min-width: min(260px, 36vw); text-align: right; }
-    .progress-stats { display: flex; justify-content: flex-end; gap: 9px; align-items: baseline; font-size: .82rem; color: var(--muted); }
+    .progress-stats { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; align-items: baseline; font-size: .82rem; color: var(--muted); }
     .progress-stats strong { color: var(--ink); font-size: .96rem; }
+    .review-summary { color: #b45309; font-weight: 800; }
     .progress-bar { height: 7px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: #e8edf6; }
     .progress-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #4f7cf4, #6c4fe9); transition: width .2s ease; }
     .subjects { display: grid; gap: 18px; }
@@ -119,9 +120,15 @@
     .subject-header h2 { margin: 0; font-size: 1.08rem; letter-spacing: -.02em; }
     .subject-header span { color: var(--muted); font-size: .82rem; white-space: nowrap; }
     .questions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .question { display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 18px; border-bottom: 1px solid #edf1f6; }
+    .question { display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 18px; border-bottom: 1px solid #edf1f6; cursor: pointer; transition: background .2s ease, box-shadow .2s ease; }
+    .question.selected { background: #f1f5ff; box-shadow: inset 3px 0 0 var(--primary); }
+    .question.selected .question-number { color: var(--primary); }
     .question:nth-child(odd) { border-right: 1px solid #edf1f6; }
-    .question-number { flex: 0 0 42px; color: #4c5c76; font-size: .88rem; font-weight: 800; }
+    .question-marker { display: flex; flex: 0 0 76px; align-items: center; gap: 5px; }
+    .question-number { flex: 1; color: #4c5c76; font-size: .88rem; font-weight: 800; }
+    .review-toggle { flex: 0 0 28px; width: 28px; min-height: 28px; padding: 2px; border: 1px solid #d7dde8; border-radius: 8px; color: #8b95a7; background: #fff; font-size: 15px; line-height: 1; cursor: pointer; }
+    .review-toggle:hover, .review-toggle:focus-visible { border-color: #f59e0b; outline: none; }
+    .review-toggle.active { border-color: #f59e0b; color: #b45309; background: #fff7df; box-shadow: 0 0 0 2px rgba(245,158,11,.14); }
     .omr-options { display: flex; flex: 1; justify-content: space-between; gap: 5px; }
     .omr-choice { position: relative; flex: 1; max-width: 42px; }
     .omr-choice input { position: absolute; opacity: 0; pointer-events: none; }
@@ -195,7 +202,9 @@
       .question:nth-child(odd) { border-right: 0; }
       .subject-header { flex-wrap: wrap; padding: 15px; }
       .question { min-height: 72px; gap: 8px; padding: 12px 14px; }
-      .question-number { flex-basis: 36px; }
+      .question-marker { flex-basis: 58px; gap: 2px; }
+      .question-number { font-size: .82rem; }
+      .review-toggle { flex-basis: 28px; width: 28px; min-height: 32px; }
       .omr-choice { max-width: 42px; }
       .omr-choice span { min-width: 42px; height: 42px; }
       .result-grid { grid-template-columns: 1fr; }
@@ -205,7 +214,8 @@
       .actions .button { width: 100%; min-height: 48px; }
     }
     @media (max-width: 390px) {
-      .question-number { flex-basis: 34px; font-size: .79rem; }
+      .question-marker { flex-basis: 56px; }
+      .question-number { font-size: .79rem; }
       .score-cards { grid-template-columns: 1fr; }
     }
   </style>
@@ -302,7 +312,7 @@
           <button id="resetTimerButton" class="button secondary small timer-control" type="button">타이머 초기화</button>
           <button id="resetAnswersButton" class="button secondary small" type="button">답안 초기화</button>
           <div class="progress-wrap">
-            <div class="progress-stats"><strong id="progressText">0 / 0</strong><span id="unansweredText">미응답 0문항</span></div>
+            <div class="progress-stats"><strong id="progressText">총 0문항 중 마킹 완료: 0개</strong><span id="reviewText" class="review-summary">| 검토 필요: 0개</span><span id="unansweredText">| 미응답 0문항</span></div>
             <div class="progress-bar" aria-label="시험 진행률"><span id="progressFill"></span></div>
           </div>
         </div>
@@ -382,6 +392,8 @@
     const state = {
       config: null,
       answers: new Map(),
+      reviewQuestions: new Set(),
+      selectedQuestion: 1,
       timerId: null,
       startedAt: null,
       deadline: null,
@@ -514,6 +526,8 @@
       }
 
       state.answers = new Map();
+      state.reviewQuestions = new Set();
+      state.selectedQuestion = 1;
       state.timeExpired = false;
       $('#setupScreen').classList.add('hidden');
       $('#examScreen').classList.remove('hidden');
@@ -544,14 +558,27 @@
           <textarea id="key-${index}" data-subject-index="${index}" placeholder="예: ${Array.from({ length: Math.min(subject.count, 10) }, (_, i) => (i % config.optionCount) + 1).join(' ')}"></textarea>
         </div>`).join('');
 
+      document.querySelectorAll('.question').forEach(question => question.addEventListener('click', () => {
+        setSelectedQuestion(Number(question.dataset.questionRow));
+      }));
+      document.querySelectorAll('.review-toggle').forEach(button => button.addEventListener('click', event => {
+        event.stopPropagation();
+        const questionNumber = Number(button.dataset.question);
+        setSelectedQuestion(questionNumber);
+        toggleReviewQuestion(questionNumber);
+      }));
       document.querySelectorAll('.answer-radio').forEach(input => input.addEventListener('change', event => {
         if (state.timeExpired) return;
-        state.answers.set(Number(event.target.dataset.question), Number(event.target.value));
+        const questionNumber = Number(event.target.dataset.question);
+        state.answers.set(questionNumber, Number(event.target.value));
+        setSelectedQuestion(questionNumber);
         updateProgress();
       }));
       $('#quickPasteInput').value = '';
       hideNotice($('#quickPasteFeedback'));
       hideNotice($('#gradeError'));
+      setSelectedQuestion(state.selectedQuestion);
+      updateReviewControls();
       updateProgress();
     }
 
@@ -560,14 +587,94 @@
         const value = optionIndex + 1;
         return `<label class="omr-choice"><input class="answer-radio" type="radio" name="question-${questionNumber}" value="${value}" data-question="${questionNumber}" data-subject="${subjectIndex}" aria-label="${questionNumber}번 ${optionLabels[optionIndex]}"><span>${optionLabels[optionIndex]}</span></label>`;
       }).join('');
-      return `<div class="question"><span class="question-number">${questionNumber}번</span><div class="omr-options">${options}</div></div>`;
+      return `<div class="question" data-question-row="${questionNumber}" tabindex="-1"><div class="question-marker"><span class="question-number">${questionNumber}번</span><button class="review-toggle" type="button" data-question="${questionNumber}" aria-label="${questionNumber}번 검토 필요" aria-pressed="false">🚩</button></div><div class="omr-options">${options}</div></div>`;
+    }
+
+    function setSelectedQuestion(questionNumber, shouldScroll = false) {
+      if (!state.config) return;
+      const selected = Math.max(1, Math.min(state.config.totalQuestions, questionNumber));
+      state.selectedQuestion = selected;
+      document.querySelectorAll('.question').forEach(row => {
+        const isSelected = Number(row.dataset.questionRow) === selected;
+        row.classList.toggle('selected', isSelected);
+        row.setAttribute('aria-current', isSelected ? 'true' : 'false');
+      });
+      if (shouldScroll) {
+        document.querySelector(`[data-question-row="${selected}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function updateReviewControls() {
+      document.querySelectorAll('.review-toggle').forEach(button => {
+        const active = state.reviewQuestions.has(Number(button.dataset.question));
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    function toggleReviewQuestion(questionNumber) {
+      if (!state.config) return;
+      if (state.reviewQuestions.has(questionNumber)) {
+        state.reviewQuestions.delete(questionNumber);
+      } else {
+        state.reviewQuestions.add(questionNumber);
+      }
+      updateReviewControls();
+      updateProgress();
+    }
+
+    function setAnswerForQuestion(questionNumber, value) {
+      const input = document.querySelector(`.answer-radio[name="question-${questionNumber}"][value="${value}"]`);
+      if (!input) return;
+      input.checked = true;
+      state.answers.set(questionNumber, value);
+      setSelectedQuestion(questionNumber);
+      updateProgress();
+    }
+
+    function clearAnswerForQuestion(questionNumber) {
+      document.querySelectorAll(`.answer-radio[name="question-${questionNumber}"]`).forEach(input => { input.checked = false; });
+      state.answers.delete(questionNumber);
+      updateProgress();
+    }
+
+    function isTextEntryTarget(target) {
+      return target instanceof HTMLElement && (target.matches('input, textarea, select, [contenteditable="true"]') || target.isContentEditable);
+    }
+
+    function handleKeyboardMarking(event) {
+      if (!state.config || state.timeExpired || $('#examScreen').classList.contains('hidden') || isTextEntryTarget(event.target)) return;
+      if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+      const current = state.selectedQuestion;
+      const key = event.key;
+      if (/^[1-9]$/.test(key) && Number(key) <= state.config.optionCount) {
+        event.preventDefault();
+        setAnswerForQuestion(current, Number(key));
+        return;
+      }
+      if (key === 'ArrowDown' || (key === 'Enter' && !event.shiftKey)) {
+        event.preventDefault();
+        setSelectedQuestion(current + 1, true);
+        return;
+      }
+      if (key === 'ArrowUp' || (key === 'Enter' && event.shiftKey)) {
+        event.preventDefault();
+        setSelectedQuestion(current - 1, true);
+        return;
+      }
+      if (key === 'Backspace' || key === 'Delete') {
+        event.preventDefault();
+        clearAnswerForQuestion(current);
+      }
     }
 
     function updateProgress() {
       const total = state.config.totalQuestions;
       const done = state.answers.size;
-      $('#progressText').textContent = `${done} / ${total}`;
-      $('#unansweredText').textContent = `미응답 ${total - done}문항`;
+      $('#progressText').textContent = `총 ${total}문항 중 마킹 완료: ${done}개`;
+      $('#reviewText').textContent = `| 검토 필요: ${state.reviewQuestions.size}개`;
+      $('#unansweredText').textContent = `| 미응답 ${total - done}문항`;
       $('#progressFill').style.width = `${total ? done / total * 100 : 0}%`;
     }
 
@@ -814,6 +921,7 @@
     $('#quickPasteButton').addEventListener('click', quickPasteAnswers);
     $('#quickPasteInput').addEventListener('paste', () => window.setTimeout(quickPasteAnswers, 0));
     $('#gradeButton').addEventListener('click', gradeExam);
+    document.addEventListener('keydown', handleKeyboardMarking);
     applyFormConfig(defaultConfig);
   </script>
 </body>

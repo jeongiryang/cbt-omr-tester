@@ -236,6 +236,7 @@
         <span class="preset-label">빠른 설정</span>
         <button id="adspPresetButton" class="preset-button" type="button">ADsP 프리셋</button>
         <button id="engineerPresetButton" class="preset-button" type="button">정보처리기사 프리셋</button>
+        <button id="sqldPresetButton" class="preset-button" type="button">SQLD 프리셋</button>
         <button id="resetPresetButton" class="preset-button reset" type="button">초기화</button>
       </div>
 
@@ -346,9 +347,9 @@
   <script>
     const defaultConfig = {
       subjects: [
-        { name: '1과목', count: 10 },
-        { name: '2과목', count: 10 },
-        { name: '3과목', count: 10 }
+        { name: '과목', count: 10 },
+        { name: '과목', count: 10 },
+        { name: '과목', count: 10 }
       ],
       optionCount: 4,
       scoreMode: 'manual',
@@ -386,6 +387,18 @@
         passScore: 60,
         subjectCutoff: 40,
         timeLimit: 150
+      },
+      sqld: {
+        subjects: [
+          { name: '데이터 모델링의 이해', count: 10 },
+          { name: 'SQL 기본 및 활용', count: 40 }
+        ],
+        optionCount: 4,
+        scoreMode: 'manual',
+        pointPerQuestion: 2,
+        passScore: 60,
+        subjectCutoff: 40,
+        timeLimit: 90
       }
     };
 
@@ -414,9 +427,14 @@
       return String(value).replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
     }
 
+    function formatSubjectName(name, index) {
+      const baseName = String(name ?? '').trim().replace(/^\d+\.\s*/, '');
+      return `${index + 1}. ${baseName || '과목'}`;
+    }
+
     function subjectRow(index, data = {}) {
       const number = index + 1;
-      const name = data.name ?? `${number}과목`;
+      const name = formatSubjectName(data.name ?? '과목', index);
       const count = data.count ?? 10;
       return `
         <div class="subject-row">
@@ -491,7 +509,7 @@
       const customTimeLimit = Number.parseInt($('#customTimeLimit').value, 10);
       const timeLimit = selectedTimeLimit === 'custom' ? 0 : Number(selectedTimeLimit);
       const subjects = [...document.querySelectorAll('.subject-row')].map((row, index) => ({
-        name: row.querySelector('.subject-name').value.trim() || `${index + 1}과목`,
+        name: formatSubjectName(row.querySelector('.subject-name').value, index),
         count: Number.parseInt(row.querySelector('.subject-count').value, 10)
       }));
 
@@ -548,12 +566,12 @@
       $('#subjects').innerHTML = config.subjects.map((subject, subjectIndex) => {
         const first = questionNumber;
         const rows = Array.from({ length: subject.count }, () => questionTemplate(questionNumber++, subjectIndex, config.optionCount)).join('');
-        return `<section class="card subject-card"><div class="subject-header"><h2>${escapeHtml(subject.name)}</h2><span>${first}~${questionNumber - 1}번 · ${subject.count}문항</span></div><div class="questions">${rows}</div></section>`;
+        return `<section class="card subject-card"><div class="subject-header"><h2>${escapeHtml(formatSubjectName(subject.name, subjectIndex))}</h2><span>${first}~${questionNumber - 1}번 · ${subject.count}문항</span></div><div class="questions">${rows}</div></section>`;
       }).join('');
 
       $('#answerInputs').innerHTML = config.subjects.map((subject, index) => `
         <div class="answer-box">
-          <label for="key-${index}">${escapeHtml(subject.name)} 정답</label>
+          <label for="key-${index}">${escapeHtml(formatSubjectName(subject.name, index))} 정답</label>
           <small>${subject.count}개 입력 · ${config.optionCount}지선다</small>
           <textarea id="key-${index}" data-subject-index="${index}" placeholder="예: ${Array.from({ length: Math.min(subject.count, 10) }, (_, i) => (i % config.optionCount) + 1).join(' ')}"></textarea>
         </div>`).join('');
@@ -827,7 +845,7 @@
       const keys = [];
       state.config.subjects.forEach((subject, index) => {
         const tokens = parseAnswerTokens($(`#key-${index}`).value, state.config.optionCount);
-        if (tokens.length !== subject.count) throw new Error(`${subject.name}: 정답은 ${subject.count}개를 입력하세요.`);
+        if (tokens.length !== subject.count) throw new Error(`${formatSubjectName(subject.name, index)}: 정답은 ${subject.count}개를 입력하세요.`);
         keys.push(tokens);
       });
       return keys;
@@ -849,16 +867,17 @@
       let globalQuestion = 1;
       let totalCorrect = 0;
       state.config.subjects.forEach((subject, subjectIndex) => {
+        const displayName = formatSubjectName(subject.name, subjectIndex);
         let correct = 0;
         keys[subjectIndex].forEach(key => {
           const submitted = state.answers.get(globalQuestion);
           if (submitted === key) correct++;
-          else wrongs.push({ question: globalQuestion, subject: subject.name, submitted, key });
+          else wrongs.push({ question: globalQuestion, subject: displayName, submitted, key });
           globalQuestion++;
         });
         totalCorrect += correct;
         const convertedScore = correct / subject.count * 100;
-        subjectResults.push({ ...subject, correct, convertedScore, rawScore: correct * state.config.pointPerQuestion, isFail: convertedScore < state.config.subjectCutoff });
+        subjectResults.push({ ...subject, displayName, correct, convertedScore, rawScore: correct * state.config.pointPerQuestion, isFail: convertedScore < state.config.subjectCutoff });
       });
 
       const rawTotal = totalCorrect * state.config.pointPerQuestion;
@@ -866,7 +885,7 @@
       const failedSubjects = subjectResults.filter(result => result.isFail);
       const reasons = [];
       if (convertedTotal < state.config.passScore) reasons.push(`전체 점수 ${formatNumber(convertedTotal)}점이 합격 기준 ${formatNumber(state.config.passScore)}점 미만`);
-      if (failedSubjects.length) reasons.push(failedSubjects.map(result => `${result.name} 과락(${formatNumber(result.convertedScore)}점)`).join(', '));
+      if (failedSubjects.length) reasons.push(failedSubjects.map(result => `${result.displayName} 과락(${formatNumber(result.convertedScore)}점)`).join(', '));
       renderResult({ passed: reasons.length === 0, reasons, subjectResults, wrongs, rawTotal, convertedTotal, totalCorrect });
       $('#resultArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -875,7 +894,7 @@
       const rawMax = state.config.totalQuestions * state.config.pointPerQuestion;
       const subjectScores = result.subjectResults.map(item => `
         <article class="subject-score">
-          <h3>${escapeHtml(item.name)}</h3>
+          <h3>${escapeHtml(item.displayName)}</h3>
           <p><strong>${item.correct} / ${item.count} 정답</strong> · ${formatNumber(item.convertedScore)}점 환산</p>
           <p>원점수 ${formatNumber(item.rawScore)} / ${formatNumber(item.count * state.config.pointPerQuestion)}점</p>
           <span class="status ${item.isFail ? 'over' : ''}">${item.isFail ? '과락' : '기준 통과'}</span>
@@ -913,6 +932,7 @@
     $('#timeLimit').addEventListener('change', toggleTimeLimit);
     $('#adspPresetButton').addEventListener('click', () => applyFormConfig(presets.adsp));
     $('#engineerPresetButton').addEventListener('click', () => applyFormConfig(presets.engineer));
+    $('#sqldPresetButton').addEventListener('click', () => applyFormConfig(presets.sqld));
     $('#resetPresetButton').addEventListener('click', () => applyFormConfig(defaultConfig));
     $('#startButton').addEventListener('click', startExam);
     $('#timerPauseButton').addEventListener('click', toggleTimerPause);

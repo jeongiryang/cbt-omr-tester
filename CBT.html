@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>스마트 OMR · 자동 채점</title>
+  <title>OMR · 자동 채점</title>
   <style>
     :root {
       --ink: #172033;
@@ -36,7 +36,6 @@
     button { cursor: pointer; }
     .app { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 36px 0 64px; }
     .hero { margin-bottom: 24px; }
-    .eyebrow { margin: 0 0 7px; color: var(--primary); font-weight: 800; font-size: .78rem; letter-spacing: .1em; }
     h1 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.45rem); letter-spacing: -.045em; }
     .hero p:last-child { margin: 8px 0 0; color: var(--muted); }
     .card {
@@ -59,6 +58,12 @@
     .preset-button { padding: 8px 11px; font-size: .82rem; }
     .preset-button.reset, .button.secondary { color: var(--primary); background: var(--primary-soft); box-shadow: none; }
     .preset-button:hover, .button:hover { transform: translateY(-1px); }
+    .custom-preset-list { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 8px; padding-top: 9px; border-top: 1px dashed #cbd8f1; }
+    .custom-preset-list:empty { display: none; }
+    .custom-preset-item { display: inline-flex; overflow: hidden; border: 1px solid #c7d5fb; border-radius: 10px; background: #fff; }
+    .custom-preset-item .preset-button { border-radius: 0; box-shadow: none; }
+    .preset-delete { width: 34px; border: 0; border-left: 1px solid #d9e2fa; color: #a53842; background: #fff5f5; font-size: .95rem; font-weight: 800; }
+    .preset-delete:hover, .preset-delete:focus-visible { color: #fff; background: var(--bad); outline: none; }
     .button.small { padding: 9px 12px; font-size: .86rem; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .field { min-width: 0; }
@@ -94,6 +99,14 @@
     .notice.error { color: #982b35; background: #fff1f2; border: 1px solid #fecdd3; }
     .notice.info { color: #3159ba; background: #eef3ff; border: 1px solid #d7e2ff; }
     .notice.warning { color: var(--warning); background: var(--warning-soft); border: 1px solid #f4d992; }
+    .modal { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 20px; }
+    .modal-backdrop { position: absolute; inset: 0; background: rgba(21, 31, 52, .48); }
+    .modal-card { position: relative; z-index: 1; width: min(640px, 100%); max-height: min(760px, calc(100vh - 40px)); overflow: auto; padding: 24px; border: 1px solid #dce4f2; border-radius: 18px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .24); }
+    .modal-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 18px; }
+    .modal-heading .section-help { margin-bottom: 0; }
+    .modal-close { min-width: 38px; min-height: 38px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); background: #fff; font-size: 1.25rem; line-height: 1; }
+    .custom-preset-total { margin: 16px 0 0; padding: 11px 13px; border-radius: 10px; color: #3159ba; background: #eef3ff; font-size: .88rem; font-weight: 800; }
+    .custom-preset-total strong { font-size: 1rem; }
 
     .exam-top {
       position: sticky; top: 10px; z-index: 10; display: flex; justify-content: space-between; gap: 18px;
@@ -181,6 +194,12 @@
     .answer-bad { color: var(--bad); font-weight: 800; }
     .answer-good { color: var(--good); font-weight: 800; }
     .all-correct { padding: 16px; border-radius: 10px; color: var(--good); background: #ecfaf4; font-size: .9rem; font-weight: 700; }
+    .site-footer { margin-top: 28px; padding: 22px 18px; border-top: 1px solid var(--line); color: var(--muted); text-align: center; font-size: .82rem; }
+    .site-footer p { margin: 0; }
+    .site-footer p + p { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 7px; }
+    .github-link { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 1px solid #ccd7e7; border-radius: 9px; color: #42526d; background: #fff; transition: color .15s, border-color .15s, transform .15s; }
+    .github-link:hover, .github-link:focus-visible { border-color: var(--primary); color: var(--primary); outline: none; transform: translateY(-1px); }
+    .github-link svg { width: 17px; height: 17px; fill: currentColor; }
 
     @media (max-width: 768px) {
       .app { width: min(100% - 20px, 1120px); padding-top: 22px; }
@@ -188,6 +207,10 @@
       .preset-bar { align-items: stretch; }
       .preset-label { flex-basis: 100%; }
       .preset-button { flex: 1 1 140px; min-height: 44px; }
+      .custom-preset-item { flex: 1 1 160px; }
+      .custom-preset-item .preset-button { min-width: 0; }
+      .modal { align-items: end; padding: 10px; }
+      .modal-card { max-height: calc(100vh - 20px); padding: 20px; border-radius: 16px; }
       .subject-row { grid-template-columns: 34px minmax(0, 1fr); }
       .subject-row .question-count { grid-column: 2; }
       .exam-top { align-items: stretch; flex-direction: column; gap: 11px; }
@@ -212,6 +235,7 @@
       .quick-paste-row .button { width: 100%; }
       .actions { display: block; }
       .actions .button { width: 100%; min-height: 48px; }
+      .site-footer { padding: 20px 8px; font-size: .76rem; }
     }
     @media (max-width: 390px) {
       .question-marker { flex-basis: 56px; }
@@ -223,21 +247,22 @@
 <body>
   <main class="app">
     <header class="hero">
-      <p class="eyebrow">BROWSER-ONLY OMR SYSTEM</p>
-      <h1>스마트 OMR · 자동 채점</h1>
+      <h1>OMR · 자동 채점</h1>
       <p>시험 조건을 설정하고 답안을 마킹한 뒤 정답만 입력하면 바로 채점합니다.</p>
     </header>
 
     <section id="setupScreen" class="card setting-card" aria-labelledby="setupTitle">
       <h2 id="setupTitle" class="section-title">시험 기본 설정</h2>
-      <p class="section-help">프리셋으로 빠르게 시작하거나 과목별 이름과 문항 수를 직접 구성할 수 있습니다.</p>
+      <p class="section-help">빠르게 시작하거나 과목별 이름과 문항 수를 직접 구성할 수 있습니다.</p>
 
-      <div class="preset-bar" aria-label="자격증 프리셋">
+      <div class="preset-bar" aria-label="빠른 설정">
         <span class="preset-label">빠른 설정</span>
-        <button id="adspPresetButton" class="preset-button" type="button">ADsP 프리셋</button>
-        <button id="engineerPresetButton" class="preset-button" type="button">정보처리기사 프리셋</button>
-        <button id="sqldPresetButton" class="preset-button" type="button">SQLD 프리셋</button>
+        <button id="adspPresetButton" class="preset-button" type="button">ADsP</button>
+        <button id="engineerPresetButton" class="preset-button" type="button">정보처리기사</button>
+        <button id="sqldPresetButton" class="preset-button" type="button">SQLD</button>
+        <button id="openCustomPresetButton" class="preset-button" type="button">+ 추가</button>
         <button id="resetPresetButton" class="preset-button reset" type="button">초기화</button>
+        <div id="customPresetList" class="custom-preset-list" aria-label="사용자 지정 빠른 설정"></div>
       </div>
 
       <div class="form-grid">
@@ -342,7 +367,51 @@
 
       <section id="resultArea" class="result-area hidden" aria-live="polite"></section>
     </section>
+
+    <footer class="site-footer">
+      <p>CBT OMR Tester | 온라인 OMR 채점 및 실전 연습 시스템</p>
+      <p>@ 2026 정이랑 | OpenAI Codex · ChatGPT 협업 제작 <a class="github-link" href="https://github.com/jeongiryang/cbt-omr-tester" target="_blank" rel="noopener noreferrer" aria-label="GitHub 저장소 새 탭에서 열기" title="GitHub 저장소"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49 0-.24-.01-1.04-.01-1.89-2.78.62-3.37-1.21-3.37-1.21-.45-1.19-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.07 1.53 1.07.9 1.57 2.35 1.12 2.92.85.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.15-4.56-5.12 0-1.13.39-2.05 1.03-2.77-.1-.26-.45-1.32.1-2.74 0 0 .84-.28 2.75 1.06A9.3 9.3 0 0 1 12 6.84c.85 0 1.71.12 2.51.34 1.91-1.34 2.75-1.06 2.75-1.06.55 1.42.2 2.48.1 2.74.64.72 1.03 1.64 1.03 2.77 0 3.98-2.34 4.85-4.57 5.11.36.33.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.23 10.23 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"/></svg></a></p>
+    </footer>
   </main>
+
+  <div id="customPresetModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="customPresetTitle">
+    <div class="modal-backdrop" data-close-custom-preset></div>
+    <section class="modal-card">
+      <div class="modal-heading">
+        <div>
+          <h2 id="customPresetTitle" class="section-title">빠른 설정 추가</h2>
+          <p class="section-help">설정 이름, 제한시간, 과목별 문항 수를 입력하면 현재 브라우저에 저장됩니다.</p>
+        </div>
+        <button id="closeCustomPresetButton" class="modal-close" type="button" aria-label="빠른 설정 추가 창 닫기">×</button>
+      </div>
+      <form id="customPresetForm">
+        <div class="form-grid">
+          <div class="field">
+            <label class="field-label" for="customPresetName">시험 이름</label>
+            <input id="customPresetName" type="text" maxlength="40" required placeholder="예: 사내 모의고사">
+          </div>
+          <div class="field">
+            <label class="field-label" for="customPresetTimeLimit">제한시간 <span class="sub-label">0분 입력 시 제한 없음</span></label>
+            <input id="customPresetTimeLimit" type="number" min="0" max="720" step="1" value="60" inputmode="numeric" required>
+          </div>
+          <div class="field full">
+            <label class="field-label" for="customPresetSubjectCount">과목 수</label>
+            <input id="customPresetSubjectCount" type="number" min="1" max="20" step="1" value="2" inputmode="numeric">
+          </div>
+          <div class="field full">
+            <span class="field-label">과목 구성</span>
+            <div id="customPresetSubjectSettings" class="subject-settings"></div>
+            <p class="custom-preset-total">총 문항 수: <strong id="customPresetTotal">0</strong>문항</p>
+          </div>
+        </div>
+        <div id="customPresetError" class="notice error hidden" role="alert"></div>
+        <div class="actions">
+          <button id="cancelCustomPresetButton" class="button secondary" type="button">취소</button>
+          <button class="button" type="submit">설정 저장</button>
+        </div>
+      </form>
+    </section>
+  </div>
 
   <script>
     const defaultConfig = {
@@ -418,6 +487,8 @@
 
     const optionLabels = ['①', '②', '③', '④', '⑤'];
     const $ = selector => document.querySelector(selector);
+    const CUSTOM_PRESETS_STORAGE_KEY = 'smart-omr-custom-presets-v1';
+    let customPresets = [];
 
     function cloneConfig(config) {
       return { ...config, subjects: config.subjects.map(subject => ({ ...subject })) };
@@ -430,6 +501,143 @@
     function formatSubjectName(name, index) {
       const baseName = String(name ?? '').trim().replace(/^\d+\.\s*/, '');
       return `${index + 1}. ${baseName || '과목'}`;
+    }
+
+    function customPresetSubjectRow(index, data = {}) {
+      const number = index + 1;
+      const name = String(data.name ?? '과목').trim().replace(/^\d+\.\s*/, '') || '과목';
+      const count = data.count ?? 10;
+      return `
+        <div class="subject-row custom-preset-subject-row">
+          <span class="subject-no">${number}</span>
+          <label><span class="mini-label">과목명</span>
+            <input class="custom-preset-subject-name" type="text" maxlength="40" value="${escapeHtml(name)}" placeholder="예: 데이터 분석">
+          </label>
+          <label class="question-count"><span class="mini-label">문항 수</span>
+            <input class="custom-preset-subject-count" type="number" min="1" max="200" value="${count}" inputmode="numeric">
+          </label>
+        </div>`;
+    }
+
+    function renderCustomPresetSubjectSettings(subjects) {
+      const previous = subjects ?? [...document.querySelectorAll('.custom-preset-subject-row')].map(row => ({
+        name: row.querySelector('.custom-preset-subject-name').value,
+        count: row.querySelector('.custom-preset-subject-count').value
+      }));
+      const count = subjects ? subjects.length : Math.max(1, Math.min(20, Number.parseInt($('#customPresetSubjectCount').value, 10) || 1));
+      $('#customPresetSubjectCount').value = count;
+      $('#customPresetSubjectSettings').innerHTML = Array.from({ length: count }, (_, index) => customPresetSubjectRow(index, previous[index])).join('');
+      document.querySelectorAll('.custom-preset-subject-count').forEach(input => input.addEventListener('input', updateCustomPresetTotal));
+      updateCustomPresetTotal();
+    }
+
+    function updateCustomPresetTotal() {
+      const total = [...document.querySelectorAll('.custom-preset-subject-count')]
+        .reduce((sum, input) => sum + Math.max(0, Number.parseInt(input.value, 10) || 0), 0);
+      $('#customPresetTotal').textContent = total.toLocaleString('ko-KR');
+    }
+
+    function normalizeCustomPreset(preset) {
+      if (!preset || typeof preset !== 'object') return null;
+      const name = String(preset.name ?? '').trim().slice(0, 40);
+      const timeLimit = Number.parseInt(preset.timeLimit, 10);
+      const subjects = Array.isArray(preset.subjects) ? preset.subjects.map((subject, index) => ({
+        name: String(subject?.name ?? '').trim().replace(/^\d+\.\s*/, '') || '과목',
+        count: Number.parseInt(subject?.count, 10),
+        index
+      })).filter(subject => Number.isInteger(subject.count) && subject.count >= 1 && subject.count <= 200) : [];
+      const totalQuestions = subjects.reduce((sum, subject) => sum + subject.count, 0);
+      if (!name || !Number.isInteger(timeLimit) || timeLimit < 0 || timeLimit > 720 || !subjects.length || subjects.length > 20 || totalQuestions > 4000) return null;
+      return {
+        id: String(preset.id ?? `preset-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+        name,
+        subjects: subjects.map(({ name: subjectName, count }) => ({ name: subjectName, count })),
+        optionCount: 4,
+        scoreMode: 'manual',
+        pointPerQuestion: 2,
+        passScore: 60,
+        subjectCutoff: 40,
+        timeLimit
+      };
+    }
+
+    function loadCustomPresets() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(CUSTOM_PRESETS_STORAGE_KEY) || '[]');
+        return Array.isArray(stored) ? stored.map(normalizeCustomPreset).filter(Boolean) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCustomPresets() {
+      try {
+        localStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(customPresets));
+        return true;
+      } catch {
+        showNotice($('#setupError'), '사용자 지정 빠른 설정을 브라우저에 저장할 수 없습니다.', 'error');
+        return false;
+      }
+    }
+
+    function renderCustomPresets() {
+      $('#customPresetList').innerHTML = customPresets.map(preset => `
+        <div class="custom-preset-item">
+          <button class="preset-button custom-preset-button" type="button" data-custom-preset-id="${escapeHtml(preset.id)}">${escapeHtml(preset.name)}</button>
+          <button class="preset-delete" type="button" data-delete-custom-preset-id="${escapeHtml(preset.id)}" aria-label="${escapeHtml(preset.name)} 빠른 설정 삭제" title="빠른 설정 삭제">×</button>
+        </div>`).join('');
+      document.querySelectorAll('.custom-preset-button').forEach(button => button.addEventListener('click', () => {
+        const preset = customPresets.find(item => item.id === button.dataset.customPresetId);
+        if (preset) applyFormConfig(preset);
+      }));
+      document.querySelectorAll('.preset-delete').forEach(button => button.addEventListener('click', () => {
+        const preset = customPresets.find(item => item.id === button.dataset.deleteCustomPresetId);
+        if (!preset || !window.confirm(`“${preset.name}” 빠른 설정을 삭제할까요?`)) return;
+        customPresets = customPresets.filter(item => item.id !== preset.id);
+        saveCustomPresets();
+        renderCustomPresets();
+      }));
+    }
+
+    function openCustomPresetModal() {
+      $('#customPresetForm').reset();
+      $('#customPresetSubjectCount').value = 2;
+      renderCustomPresetSubjectSettings([{ name: '과목', count: 10 }, { name: '과목', count: 10 }]);
+      hideNotice($('#customPresetError'));
+      $('#customPresetModal').classList.remove('hidden');
+      $('#customPresetName').focus();
+    }
+
+    function closeCustomPresetModal() {
+      $('#customPresetModal').classList.add('hidden');
+      hideNotice($('#customPresetError'));
+    }
+
+    function createCustomPreset() {
+      const name = $('#customPresetName').value.trim();
+      const timeLimit = Number.parseInt($('#customPresetTimeLimit').value, 10);
+      const subjectCount = Number.parseInt($('#customPresetSubjectCount').value, 10);
+      const subjects = [...document.querySelectorAll('.custom-preset-subject-row')].map(row => ({
+        name: row.querySelector('.custom-preset-subject-name').value,
+        count: Number.parseInt(row.querySelector('.custom-preset-subject-count').value, 10)
+      }));
+      const hasInvalidSubjectCount = subjects.some(subject => !Number.isInteger(subject.count) || subject.count < 1 || subject.count > 200);
+      const preset = normalizeCustomPreset({
+        id: `preset-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        timeLimit,
+        subjects
+      });
+      if (!Number.isInteger(subjectCount) || subjectCount < 1 || subjectCount > 20 || subjects.length !== subjectCount || hasInvalidSubjectCount || !preset) {
+        showNotice($('#customPresetError'), '시험명, 제한시간(0~720분), 과목별 문항 수(1~200)를 확인하세요.', 'error');
+        return;
+      }
+      customPresets.push(preset);
+      if (!saveCustomPresets()) return;
+      renderCustomPresets();
+      applyFormConfig(preset);
+      closeCustomPresetModal();
+      showNotice($('#setupError'), `“${preset.name}” 빠른 설정을 저장하고 적용했습니다.`, 'info');
     }
 
     function subjectRow(index, data = {}) {
@@ -657,7 +865,10 @@
     }
 
     function isTextEntryTarget(target) {
-      return target instanceof HTMLElement && (target.matches('input, textarea, select, [contenteditable="true"]') || target.isContentEditable);
+      if (!(target instanceof HTMLElement)) return false;
+      if (target.isContentEditable || target.matches('textarea, select, [contenteditable="true"]')) return true;
+      if (!(target instanceof HTMLInputElement)) return false;
+      return ['text', 'number', 'email', 'password', 'search', 'tel', 'url', 'date', 'datetime-local', 'month', 'time', 'week'].includes(target.type);
     }
 
     function handleKeyboardMarking(event) {
@@ -671,12 +882,12 @@
         setAnswerForQuestion(current, Number(key));
         return;
       }
-      if (key === 'ArrowDown' || (key === 'Enter' && !event.shiftKey)) {
+      if (key === 'ArrowDown' || key === 'ArrowRight' || (key === 'Enter' && !event.shiftKey)) {
         event.preventDefault();
         setSelectedQuestion(current + 1, true);
         return;
       }
-      if (key === 'ArrowUp' || (key === 'Enter' && event.shiftKey)) {
+      if (key === 'ArrowUp' || key === 'ArrowLeft' || (key === 'Enter' && event.shiftKey)) {
         event.preventDefault();
         setSelectedQuestion(current - 1, true);
         return;
@@ -933,6 +1144,15 @@
     $('#adspPresetButton').addEventListener('click', () => applyFormConfig(presets.adsp));
     $('#engineerPresetButton').addEventListener('click', () => applyFormConfig(presets.engineer));
     $('#sqldPresetButton').addEventListener('click', () => applyFormConfig(presets.sqld));
+    $('#openCustomPresetButton').addEventListener('click', openCustomPresetModal);
+    $('#closeCustomPresetButton').addEventListener('click', closeCustomPresetModal);
+    $('#cancelCustomPresetButton').addEventListener('click', closeCustomPresetModal);
+    $('[data-close-custom-preset]').addEventListener('click', closeCustomPresetModal);
+    $('#customPresetSubjectCount').addEventListener('change', () => renderCustomPresetSubjectSettings());
+    $('#customPresetForm').addEventListener('submit', event => {
+      event.preventDefault();
+      createCustomPreset();
+    });
     $('#resetPresetButton').addEventListener('click', () => applyFormConfig(defaultConfig));
     $('#startButton').addEventListener('click', startExam);
     $('#timerPauseButton').addEventListener('click', toggleTimerPause);
@@ -941,7 +1161,12 @@
     $('#quickPasteButton').addEventListener('click', quickPasteAnswers);
     $('#quickPasteInput').addEventListener('paste', () => window.setTimeout(quickPasteAnswers, 0));
     $('#gradeButton').addEventListener('click', gradeExam);
-    document.addEventListener('keydown', handleKeyboardMarking);
+    document.addEventListener('keydown', handleKeyboardMarking, true);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !$('#customPresetModal').classList.contains('hidden')) closeCustomPresetModal();
+    });
+    customPresets = loadCustomPresets();
+    renderCustomPresets();
     applyFormConfig(defaultConfig);
   </script>
 </body>

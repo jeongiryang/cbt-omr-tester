@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "method": "Actual deployed browser viewport screenshots, resized and encoded to GIF with Pillow. No reused repository media or recreated UI.",
+  "file": "demo.gif",
+  "sourceUrl": "https://cbt-omr-tester.vercel.app/",
+  "capturedAt": "2026-10-20T04:52:48.712Z",
+  "scene": "시험 설정 → 10문항 OMR 마킹 → 정답 입력 → 80점·오답 2문항 채점",
+  "scope": "실제 배포 사이트를 브라우저에서 열고 조작한 화면.",
+  "originalViewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "originalFrameCount": 43,
+  "gif": {
+    "size": [
+      960,
+      600
+    ],
+    "frames": 29,
+    "durationMs": 12640,
+    "bytes": 1193757
+  },
+  "sha256": "30f9453d547d0fbc919c11408c4e454035a2f2c102051261ec515d7d7f65d277"
+}
